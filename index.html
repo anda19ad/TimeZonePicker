@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Time Zone Converter</title>
+<link rel="stylesheet" href="leaflet.css">
+<style>
+#map { height: 500px; }
+#info { margin-top: 10px; }
+</style>
+</head>
+<body>
+<h1>Time Zone Converter</h1>
+<p>Select the source timezone by clicking on the map, then select the destination timezone.</p>
+<label>Time to convert: <input type="datetime-local" id="timeInput"></label>
+<div id="map"></div>
+<div id="info"></div>
+<script src="leaflet.js"></script>
+<script src="moment.min.js"></script>
+<script src="moment-timezone-with-data.min.js"></script>
+<script>
+var map = L.map('map').setView([20, 0], 2);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 5,
+    attribution: 'Map data © OpenStreetMap contributors'
+}).addTo(map);
+
+var clicks = 0;
+var sourceTz = null;
+var sourceMarker = null;
+var targetMarker = null;
+
+function lonToTz(lon) {
+    var offset = Math.floor((lon + 7.5) / 15);
+    if (offset > 0) return 'Etc/GMT-' + offset;
+    if (offset < 0) return 'Etc/GMT+' + (-offset);
+    return 'Etc/GMT';
+}
+
+function reset() {
+    clicks = 0;
+    sourceTz = null;
+    if (sourceMarker) { map.removeLayer(sourceMarker); sourceMarker = null; }
+    if (targetMarker) { map.removeLayer(targetMarker); targetMarker = null; }
+    document.getElementById('info').textContent = '';
+}
+
+map.on('click', function(e) {
+    var tz = lonToTz(e.latlng.lng);
+    if (clicks === 0) {
+        sourceTz = tz;
+        if (sourceMarker) map.removeLayer(sourceMarker);
+        sourceMarker = L.marker(e.latlng).addTo(map);
+        document.getElementById('info').textContent = 'Source timezone: ' + tz + '. Click destination timezone.';
+        clicks = 1;
+    } else {
+        if (targetMarker) map.removeLayer(targetMarker);
+        targetMarker = L.marker(e.latlng).addTo(map);
+        var destTz = tz;
+        var timeInput = document.getElementById('timeInput').value;
+        var m = timeInput ? moment.tz(timeInput, sourceTz) : moment.tz(sourceTz);
+        var converted = m.clone().tz(destTz);
+        document.getElementById('info').textContent =
+            'Source (' + sourceTz + '): ' + m.format('YYYY-MM-DD HH:mm') +\
+            ' → Destination (' + destTz + '): ' + converted.format('YYYY-MM-DD HH:mm');
+        clicks = 0;
+    }
+});
+</script>
+<button onclick="reset()">Reset</button>
+</body>
+</html>
